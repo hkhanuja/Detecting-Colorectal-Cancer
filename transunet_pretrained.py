@@ -12,115 +12,90 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets, models, transforms
-from torch.utils.data.sampler import SubsetRandomSampler
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+from torchsummary import summary
 import torch.optim as optim
+from torch.autograd import Variable
+from time import time
+from torch import Tensor
+from torch.utils.data.sampler import SubsetRandomSampler
 from torch.optim import lr_scheduler
 import tqdm
 import gc
 import time
-import timm
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from sklearn.model_selection import train_test_split
 import random
+from collections import OrderedDict
 
 
-# In[2]:
 
 
 m1 = timm.create_model('vit_base_patch16_384',pretrained='True')
 
 
-# In[3]:
 
 
 pos_wsis = sorted(os.listdir('/scratch/Preprocessed_DigestPath/patches/tissue_train_pos-v1/'))
 
 
-# In[4]:
 
 
 print(len(pos_wsis))
 
 
-# In[5]:
+
 
 
 pos_wsis = [ele for ele in pos_wsis if '.csv' not in ele]
-
-
-# In[6]:
-
-
 print(len(pos_wsis))
 
 
-# In[7]:
 
 
 pos_patients = [ele.split('-lv1-')[0] for ele in pos_wsis]
-
-
-# In[8]:
-
-
 print(len(pos_patients))
 
 
-# In[9]:
 
 
-# pos_patients # '2019_02170_1-1_2019-02-20 19_32_09'
-
-
-# In[10]:
 
 
 pos_patients = set(pos_patients)
-
-
-# In[11]:
-
-
 print(len(pos_patients))
 
 
-# In[12]:
 
 
 validation_patients = random.sample(pos_patients, 19)
 train_patients = [ele for ele in pos_patients if ele not in validation_patients]
 
 
-# In[13]:
 
 
 print("No. of patients in validation set:",len(validation_patients))
 print("No. of patients in training set:",len(train_patients))
 
 
-# In[14]:
 
 
 validation_files = [ele for ele in pos_wsis if ele.split('-lv1-')[0] in validation_patients]
 
 
-# In[15]:
 
 
 train_files = [ele for ele in pos_wsis if ele.split('-lv1-')[0] in train_patients]
 
 
-# In[16]:
 
 
 print("No. of WSIs in validation:",len(validation_files))
 print("No. of WSIs in training:",len(train_files))
 
 
-# In[17]:
 
 
 def common(a,b): 
@@ -130,7 +105,6 @@ d=common(train_patients,validation_patients)
 print(d)
 
 
-# In[18]:
 
 
 image_shape =(224,224)
@@ -277,33 +251,9 @@ print((torch.unique(masks[2])))
 print((torch.unique(masks[3])))
 
 
-
-# In[ ]:
-
+:
 
 
-
-
-# In[ ]:
-
-
-
-
-
-# In[28]:
-
-
-import torch
-from torch.utils.data import DataLoader
-from torch.utils.data import Dataset
-import torch.nn as nn
-import torch.nn.functional as F
-from torchvision import models, transforms
-from torchsummary import summary
-import torch.optim as optim
-from torch.autograd import Variable
-from time import time
-from torch import Tensor
 
 
 # In[29]:
@@ -416,18 +366,6 @@ def conv_trans_block(in_channels,out_channels):
 # In[34]:
 
 
-from collections import OrderedDict
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
-
-def np2th(weights, conv=False):
-    """Possibly convert HWIO to OIHW."""
-    if conv:
-        weights = weights.transpose([3, 2, 0, 1])
-    return torch.from_numpy(weights)
 
 
 class StdConv2d(nn.Conv2d):
@@ -451,8 +389,6 @@ def conv1x1(cin, cout, stride=1, bias=False):
 
 
 class PreActBottleneck(nn.Module):
-    """Pre-activation (v2) bottleneck block.
-    """
 
     def __init__(self, cin, cout=None, cmid=None, stride=1):
         super().__init__()
@@ -491,7 +427,6 @@ class PreActBottleneck(nn.Module):
     
 
 class ResNetV2(nn.Module):
-    """Implementation of Pre-activation (v2) ResNet mode."""
 
     def __init__(self, block_units, width_factor):
         super().__init__()
@@ -545,8 +480,7 @@ class ResNetV2(nn.Module):
 
 
 class Embeddings(nn.Module):
-    """Construct the embeddings from patch, position embeddings.
-    """
+
     def __init__(self,embed_dim = 768,n_patches=196,p=0.,in_channels=3):
         super(Embeddings, self).__init__()
         self.hybrid_model = ResNetV2(block_units=(3, 4, 9), width_factor=1)
@@ -753,8 +687,6 @@ def train1(model, train_dl, valid_dl,train_len,val_len, optimizer, scheduler,BAT
                     
      
 
-                    # the backward pass frees the graph memory, so there is no 
-                    # need for torch.no_grad in this training pass
                     loss.backward()
                     optimizer.step()
                     # scheduler.step()
@@ -769,21 +701,14 @@ def train1(model, train_dl, valid_dl,train_len,val_len, optimizer, scheduler,BAT
 
 
 
-                # stats - whatever is the phase
-                #acc = acc_fn(outputs, y)
-
-                #running_dice_score  += evaluate(model, dataloader , device)
-                #print("running_dice_score:",running_dice_score)
                 running_loss += loss*x.shape[0] 
                 running_dice_score += dice_score*x.shape[0]
                 
 
-                #collect residual garbage
                 gc.collect()
 
                 
             epoch_loss = running_loss / number_of_images
-            #epoch_dice_score = evaluate(model, dataloader , device,phase)
             epoch_dice_score = running_dice_score/number_of_images
             
             if phase=='train':
@@ -814,7 +739,6 @@ def train1(model, train_dl, valid_dl,train_len,val_len, optimizer, scheduler,BAT
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))    
     
     return train_loss, valid_loss,train_dice,valid_dice,model
-# Distributed Data Pa
 
 
 # In[41]:
@@ -832,7 +756,7 @@ transunet_model.load_state_dict(transunet_model_dict)
 
 transunet_model.to(device)
 opt = optim.SGD(transunet_model.parameters(), lr = 0.01, momentum = 0.9,weight_decay=0.0001)  
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(opt, 'max', patience=2)  # goal: maximize Dice score
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(opt, 'min', patience=2)  
 
 
 # In[43]:
@@ -854,7 +778,6 @@ with open('/home/swathiguptha/colon_cancer_dataset/model_metrics/pretrain/transu
     f.write(' '.join(map(str,valid_dice)))
 
 
-# In[ ]:
 
 
 
