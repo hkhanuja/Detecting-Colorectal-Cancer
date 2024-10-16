@@ -935,13 +935,11 @@ with open('/home/harneet.khanuja/colon_cancer/model_metrics/pretrain/transunet_p
     f.write(' '.join(map(str,valid_dice)))
 
 
-# In[ ]:
 
 
 #checkpoint = torch.load(path)
 
 
-# In[ ]:
 
 
 device='cpu'
@@ -976,8 +974,6 @@ for k in range(x.shape[0]):
 #     print(img_id)
     img_id+=1
 
-
-# In[ ]:
 
 
 
