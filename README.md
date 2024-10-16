@@ -5,4 +5,4 @@ The project aims to create a pipeline to classify a tissue image as cancerous or
 We then use a transformer based segmenter with the aim of beating the state-of-the-art results in the domain. The segmenter being used has a CNN-transformer hybrid encoder in which CNN and transformer layer aid each other in learning global and local attention features. Self supervised learning techniques such as contrastive learning were used first to pretrain the model to instill domain knowledge in the network and then the network is finetuned on the specific dataset.
 
 Pipeline:
-![Pipeline](.pipeline.png)
+![Pipeline](./pipeline.png)
